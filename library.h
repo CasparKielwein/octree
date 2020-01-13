@@ -21,7 +21,74 @@ namespace fso {
         return vec3d{lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
     }
 
+
+//alternativly get position through array of objects.
+struct Value {
+    int v;
+    vec3d position;
+};
+
+
+namespace internal {
+
+class Node {
+public:
+    Node(vec3d c) noexcept : center(c) {}
+    ~Node() = default;
+
+    Node(const Node&) = delete;
+    Node& operator=(const Node&) = delete;
+
+    void insert(Value v);
+
+    Node& subNodeAt(const vec3d& position);
+
+    ///basically jut named indices
+    enum Octants {
+        XP_YP_ZP = 0,
+        XP_YP_ZM,
+        XP_YM_ZP,
+        XP_YM_ZM,
+        XM_YP_ZP,
+        XM_YP_ZM,
+        XM_YM_ZP,
+        XM_YM_ZM,
+    };
+
+    auto size() const {
+        return content.size();
+    }
+
+    auto begin() {
+        return content.begin();
+    }
+
+    auto end() {
+        return content.end();
+    }
+
     /**
+     * @brief creates subnodes and moves content to them.
+     *
+     * Creates all eight subnodes, even if they would be empty.
+     * This avoids having to keep a separate leaf flag to track
+     * if we need to put new values in this node or create a child.
+     *
+     * @pre this is a leaf node of the tree.
+     */
+    void split();
+
+    //private:
+    std::array<std::unique_ptr<Node>,8 > children = {};
+    std::vector<Value> content = {};
+
+    vec3d center;
+};
+
+}
+
+
+/**
      * Octree to store positions for collision detection
      *
      * Assumptions:
@@ -32,93 +99,29 @@ namespace fso {
 class Octree {
 public:
 
-    //alternativly get position through array of objects.
-    struct Value {
-        int v;
-        vec3d position;
-    };
-
     static constexpr size_t maxUnsplit = 10;
 
-    class Node {
-    public:
-        Node(vec3d c) noexcept : center(c) {}
-        ~Node() = default;
-
-        Node(const Node&) = delete;
-        Node& operator=(const Node&) = delete;
-
-        void insert(Octree::Value v);
-
-        Node& subNodeAt(const vec3d& position);
-
-        ///basically jut named indices
-        enum Octants {
-            XP_YP_ZP = 0,
-            XP_YP_ZM,
-            XP_YM_ZP,
-            XP_YM_ZM,
-            XM_YP_ZP,
-            XM_YP_ZM,
-            XM_YM_ZP,
-            XM_YM_ZM,
-        };
-
-        auto size() const {
-            return content.size();
-        }
-
-        auto begin() {
-            return content.begin();
-        }
-
-        auto end() {
-            return content.end();
-        }
-
-        ///maximum number of objects in this node before it will be split.
-        ///actual number to be determined by benchmarking
-        static constexpr size_t maxUnsplit = Octree::maxUnsplit;
-
-        /**
-         * @brief creates subnodes and moves content to them.
-         *
-         * Creates all eight subnodes, even if they would be empty.
-         * This avoids having to keep a separate leaf flag to track
-         * if we need to put new values in this node or create a child.
-         *
-         * @pre this is a leaf node of the tree.
-         */
-        void split();
-
-    //private:
-        std::array<std::unique_ptr<Node>,8 > children = {};
-        std::vector<Octree::Value> content = {};
-
-        vec3d center;
-    };
-
     struct iterator{
-        iterator(Node* n, const iterator* p, size_t c) : val(n), parent(p), nr(c) {
+        iterator(internal::Node* n, const iterator* p, size_t c) : val(n), parent(p), nr(c) {
         }
 
         bool operator==(const iterator& other) const {
             return val == other.val;
         }
 
-        Node& operator*() {
+        internal::Node& operator*() {
             return *val;
         }
 
-        const Node& operator*() const {
+        const internal::Node& operator*() const {
             return *val;
         }
 
-        Node* operator->() {
+        internal::Node* operator->() {
             return val;
         }
 
-        const Node* operator->() const {
+        const internal::Node* operator->() const {
             return val;
         }
 
@@ -138,7 +141,7 @@ public:
 
     private:
         /// nullptr is used to mark end iterator
-        Node* val;
+        internal::Node* val;
         const iterator* parent;
         size_t nr;
 
@@ -168,7 +171,7 @@ public:
     void insert(Value val);
 
 private:
-    Node& nodeAt(const vec3d& position);
+    internal::Node& nodeAt(const vec3d& position);
 
     /**
      * maximum depth of the tree, root node counts as 1
@@ -182,7 +185,7 @@ private:
      */
     static const int maxDepth = 11;
 
-    Node root;
+    internal::Node root;
 };
 
 }

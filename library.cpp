@@ -6,7 +6,7 @@ namespace fso {
 void Octree::insert(Value val) {
     auto &node = nodeAt(val.position);
 
-    if (node.size() < Node::maxUnsplit)
+    if (node.size() < Octree::maxUnsplit)
         node.insert(val);
     else {
         node.split();
@@ -14,7 +14,7 @@ void Octree::insert(Value val) {
     }
 }
 
-Octree::Node &Octree::nodeAt(const vec3d &position) {
+internal::Node &Octree::nodeAt(const vec3d &position) {
 
     return root.subNodeAt(position);
 }
@@ -23,11 +23,11 @@ Octree::Octree() : root(vec3d{0,0,0}){
 
 }
 
-void Octree::Node::insert(Octree::Value v) {
+void internal::Node::insert(Value v) {
     content.push_back(v);
 }
 
-Octree::Node &Octree::Node::subNodeAt(const vec3d &position) {
+internal::Node &internal::Node::subNodeAt(const vec3d &position) {
 
     auto offset = position - center;
 
@@ -69,7 +69,7 @@ Octree::Node &Octree::Node::subNodeAt(const vec3d &position) {
     }
 }
 
-void Octree::Node::split() {
+void internal::Node::split() {
     //create new nodes
     for( auto& child : children) {
         //if the child is already present, something went wrong
